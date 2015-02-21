@@ -5,7 +5,8 @@
 \title{Scaffold Shiny Dashboards}
 \usage{
 scaffold_dashboard(root = NULL, app.name = NULL, delete.existing = FALSE,
-  run = TRUE)
+  run = TRUE, title = "Test App", libraries = NULL, sources = NULL,
+  load = NULL, modules = NULL)
 }
 \arguments{
 \item{root}{path of the directory in which the folder with app files is to
@@ -17,6 +18,16 @@ be created.}
 exists, should it be overwritten? Default is FALSE.}
 
 \item{run}{Run the resulting app? Default is TRUE.}
+
+\item{libraries}{}
+
+\item{sources}{}
+
+\item{load}{}
+
+\item{modules}{}
+
+\item{tilte}{}
 }
 \description{
 This functions generates boilerplate code for a fully functioning

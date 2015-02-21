@@ -1,62 +1,59 @@
-scaffold_module_regression <- function(id){
-    tmp.reg_ui <-  "
-fluidRow(
+tmp.ui <-  "
+reg.$id <- fluidRow(
     box(
         title = 'Inputs',
         selectizeInput(
-            '$id-depvar',
+            'depvar-$id',
             'Choose a dependent variable',
             choices = NULL,
             multiple = FALSE
         ),
         selectInput(
-            '$id-modsDepvar',
+            'modsDepvar-$id',
             NULL,
-            choices = modOptions,
-            selected = '`*`(1)',
+            choices = NULL,
+            selected = NULL,
             multiple = TRUE
         ),                
         selectizeInput(
-            '$id-indepSet1',
+            'indepSet1-$id',
             'Choose a set of independent variables',
             choices = NULL,
-            selected = 'ratingnum',
+            selected = NULL,
             multiple = TRUE
         ),
         selectInput(
-            '$id-modsIndepSet1',
+            'modsIndepSet1-$id',
             NULL,
-            choices = modOptions,
-            selected = '`*`(1)',
+            choices = NULL,
+            selected = NULL,
             multiple = TRUE
         ),                                
         selectInput(
-            '$id-indepSet2',
+            'indepSet2-$id',
             'Choose the additional set of controls:',
             choices = NULL,
-            selected = 'spread',
+            selected = NULL,
             multiple = TRUE
         ),
         selectInput(
-            '$id-modsIndepSet2',
+            'modsIndepSet2-$id',
             NULL,
-            choices = modOptions,
-            selected = '`*`(1)',
+            choices = NULL,
+            selected = NULL,
             multiple = TRUE
         ),                                                
         selectInput(
-            '$id-absorb',
+            'fe-$id',
             'Fixed Effects:',
             choices = c(
-                'none',
-                'Country',
-                'Year'
+                'none'
             ),
             selected = 'none',
             multiple = TRUE
         ),
         checkboxInput(
-            '$id-standardize',
+            'standardize-$id',
             'Standardize all variables?',
             TRUE
         ),
@@ -65,20 +62,20 @@ fluidRow(
     box(
         title = 'Additional parameters',
         selectInput(
-            '$id-model',
+            'model-$id',
             'Model?',
             choices = eval(formals(plm)[['model']]),
             selected = 'pooling'
         ),                
         selectInput(
-            '$id-effects',
+            'effects-$id',
             'Effects?',
             choices = eval(formals(plm)[['effect']]),
             selected = 'individual'
         ),
         h4('Standard errors:'),
         selectInput(
-            '$id-se',
+            'se-$id',
             'Which SE to use?',
             choices =
                 c('Default',
@@ -87,11 +84,11 @@ fluidRow(
         ),
         hr(),
         actionButton(
-            '$id-addModel',
+            'addModel-$id',
             'Add model!'
         ),
         actionButton(
-            '$id-rmModel',
+            'rmModel-$id',
             'Remove model!'
         ),
         width = 4
@@ -99,49 +96,49 @@ fluidRow(
 )
 "
 
-        tmp.reg_server <- "
+tmp.server <- "
 updateSelectizeInput(
     session,
-    '$id-depvar',
+    'depvar-$id',
     choices = NULL,
     selected = NULL
 )
 
 updateSelectizeInput(
     session,
-    '$id-indepSet1',
+    'indepSet1-$id',
     choices = NULL,    
     selected = NULL
 )
 
 updateSelectizeInput(
     session,
-    '$id-indepSet2',
+    'indepSet2-$id',
     choices = NULL,
     selected = NULL
 )
 
-reg.output <- reactive({
-    input[['$id-addModel']]
+reg_output_$id <- reactive({
+    input[['addModel-$id']]
 
     isolate({
-        depvar = input[['$id-depvar']] 
-        indepSet1 = input[['$id-indepSet1']]
-        indepSet2 = input[['$id-indepSet2']]
-        absorb = input[['$id-absorb']]
-        effect = input[['$id-effects']]
-        model = input[['$id-model']]        
-        mods.depvar = input[['$id-modsDepvar']] 
-        mods.indepSet1 = input[['$id-modsIndepSet1']]
-        mods.indepSet2 = input[['$id-modsIndepSet2']]
-        standardize = ifelse(input[['$id-standardize']],'Yes','No')       
+        depvar = input[['depvar-$id']] 
+        indepSet1 = input[['indepSet1-$id']]
+        indepSet2 = input[['indepSet2-$id']]
+        absorb = input[['absorb-$id']]
+        effect = input[['effects-$id']]
+        model = input[['model-$id']]        
+        mods.depvar = input[['modsDepvar-$id']] 
+        mods.indepSet1 = input[['modsIndepSet1-$id']]
+        mods.indepSet2 = input[['modsIndepSet2-$id']]
+        standardize = ifelse(input[['standardize-$id']],'Yes','No')       
 
         if (absorb == 'none')
             static = NULL
         else
             static = NULL
 
-        macrodatalarge %>>%
+        $data %>>%
         (.[,.SD,.SDcols =
                c(
                    static,
@@ -175,7 +172,7 @@ reg.output <- reactive({
                 .
         ) %>>%
         (
-            if (input[['$id-standardize']] == TRUE)
+            if (input[['standardize-$id']] == TRUE)
                 .[,c(
                     ## depvar,
                     indepSet1,
@@ -193,28 +190,28 @@ reg.output <- reactive({
         (filter(
             .[complete.cases(.)]
         )) %>>%
-        ({
-            setnames(.,
-                     names(.),
-                     names(.) %>>% .recycleNames)
-        }) %>>%
+        ## ({
+        ##     setnames(.,
+        ##              names(.),
+        ##              names(.) %>>% recycleNames_$id)
+        ## }) %>>%
         (? cat('Prior to procExpand')) %>>%
         (? cat(mods.depvar %>>% paste(collapse = ';'))) %>>%
         (? cat(mods.indepSet1 %>>% paste(collapse = ';'))) %>>%
         (? cat(mods.indepSet2 %>>% paste(collapse = ';'))) %>>%        
         procExpand(
-            by = 'iso3',
-            keep = 'date',
+            by = $idVar,
+            keep = $dateVar,
             convert =
                 list(
                     sprintf('~%s~%s',
-                            depvar %>>% .recycleNames,
+                            depvar %>>% recycleNames_$id,
                             mods.depvar %>>% paste(collapse = ';')),
                     sprintf('~%s~%s',
-                            indepSet1 %>>% .recycleNames %>>% paste(collapse = ','),
+                            indepSet1 %>>% recycleNames_$id %>>% paste(collapse = ','),
                             mods.indepSet1 %>>% paste(collapse = ';')),
                     sprintf('~%s~%s',
-                            indepSet2 %>>% .recycleNames %>>% paste(collapse = ','),
+                            indepSet2 %>>% recycleNames_$id %>>% paste(collapse = ','),
                             mods.indepSet2 %>>% paste(collapse = ';'))            
                 )
         ) %>>%
@@ -222,13 +219,14 @@ reg.output <- reactive({
             f <-
                 as.formula(
                     sprintf('%s ~ %s + %s',
-                            depvar %>>% .recycleNames,
+                            depvar %>>%
+                            recycleNames_$id,
                             indepSet1 %>>%
-                            .recycleNames %>>%
+                            recycleNames_$id %>>%
                             sprintf(fmt = '`%s`') %>>%
                             paste(collapse = '+'),
                             indepSet2 %>>%
-                            .recycleNames %>>%
+                            recycleNames_$id %>>%
                             sprintf(fmt = '`%s`') %>>%
                             paste(collapse = '+'))
                 )
@@ -236,29 +234,29 @@ reg.output <- reactive({
             plm(
                 data = .,
                 formula = f,
-                index = c('iso3','date'),
+                index = c(idVar,dateVar),
                 effect = effect,
                 model = model
             )
-        }) ->> reg.results[[length(reg.results)+1]]
+        }) ->> reg_results_$id[[length(reg_results_$id)+1]]
 
-        depvar ->> reg.depvars[length(reg.depvars)+1]
-        effect %>>% paste(collapse = ', ') ->> reg.effects[length(reg.effects)+1]
-        model  %>>% paste(collapse = ', ') ->> reg.model[length(reg.model)+1]
-        absorb  %>>% paste(collapse = ', ') ->> reg.absorb[length(reg.absorb)+1]
-        standardize ->> reg.standardize[length(reg.standardize)+1]    
+        depvar ->> reg_depvars_$id[length(reg_depvars_$id)+1]
+        effect %>>% paste(collapse = ', ') ->> reg_effects_$id[length(reg_effects_$id)+1]
+        model  %>>% paste(collapse = ', ') ->> reg_model_$id[length(reg_model_$id)+1]
+        absorb  %>>% paste(collapse = ', ') ->> reg_absorb_$id[length(reg_absorb_$id)+1]
+        standardize ->> reg_standardize_$id[length(reg_standardize_$id)+1]    
     })
 })
 
-reg.rmModel <- reactive({        
-    if (input[['$id-rmModel']]){
+reg_rmModel <- reactive({        
+    if (input[['rmModel-$id']]){
         
-        reg.results <<- reg.results %>>% (.[-length(.)])
-        reg.depvars <<- reg.depvars %>>% (.[-length(.)])
-        reg.model <<- reg.model %>>% (.[-length(.)])
-        reg.effects <<- reg.effects %>>% (.[-length(.)])
-        reg.absorb <<- reg.absorb %>>% (.[-length(.)])
-        reg.standardize <<- reg.standardize %>>% (.[-length(.)])
+        reg_results_$id <<- reg_results_$id %>>% (.[-length(.)])
+        reg_depvars_$id <<- reg_depvars_$id %>>% (.[-length(.)])
+        reg_model_$id <<- reg_model_$id %>>% (.[-length(.)])
+        reg_effects_$id <<- reg_effects_$id %>>% (.[-length(.)])
+        reg_absorb_$id <<- reg_absorb_$id %>>% (.[-length(.)])
+        reg_standardize_$id <<- reg_standardize_$id %>>% (.[-length(.)])
         
         return()
     } else {
@@ -266,19 +264,19 @@ reg.rmModel <- reactive({
     }       
 })
 
-reg.star <- reactive({
-    reg.rmModel()
+reg_star_$id <- reactive({
+    reg_rmModel()
     
     withProgress(
         message = 'Estimation in progress...',
         expr = {
-            (reg.output())
+            (reg_output_$id())
         }
     )
 
     ## Label tests...
-    if (input[['$id-console-label']] == TRUE){
-        reg.results %>>%
+    if (input[['console-label-$id']] == TRUE){
+        reg_results_$id %>>%
         list.map(coefficients %>>% names) %>>%
         unlist %>>%
         unique %>>%
@@ -286,7 +284,7 @@ reg.star <- reactive({
             covariate.labels
 
         ## Dependent variable labels
-        reg.results %>>%
+        reg_results_$id %>>%
         list.map(model %>>% names %>>% (.[1])) %>>%       
         unlist %>>%
         unique ->
@@ -298,12 +296,12 @@ reg.star <- reactive({
     }
     
     list(
-        reg.results,
+        reg_results,
         add.lines =
-            list(reg.model,
-                 reg.effects,
-                 reg.absorb,
-                 reg.standardize),
+            list(reg_model,
+                 reg_effects,
+                 reg_absorb,
+                 reg_standardize),
         covariate.labels = covariate.labels[-1],
         dep.var.labels = dep.var.labels,
         digits = 2
@@ -313,27 +311,27 @@ reg.star <- reactive({
     return(o)
 })
 
-output[['$id-console']] <- renderUI({
+output[['console-$id']] <- renderUI({
     do.call(
         stargazer,
         c(
-            reg.star(),
+            reg_star_$id(),
             type = 'html'
         )
     ) %>>% HTML
 })
 
 
-output[['$id-download']] <- downloadHandler(
+output[['download-$id']] <- downloadHandler(
     filename = function(){
-        input[['$id-download-fileName']]
+        input[['download-fileName-$id']]
     },
     content = function(file){
         sink(file)
         do.call(
             stargazer,
             c(
-                reg.star(),
+                reg_star_$id(),
                 type = 'html'
             )
         )        
@@ -341,9 +339,9 @@ output[['$id-download']] <- downloadHandler(
     }
 )
 
-output[['$id-download']] <- downloadHandler(
+output[['download-$id']] <- downloadHandler(
     filename = function(){
-        sprintf('%s.tar', input[['$id-download-fileName']])
+        sprintf('%s.tar', input[['download-fileName-$id']])
     },
     content = function(file){
         oldwd <- getwd()
@@ -351,13 +349,13 @@ output[['$id-download']] <- downloadHandler(
         tmp <- sprintf('%s/%s',tempdir(),'temp')
         dir.create(tmp)
         setwd(tmp)
-
         ## HTML Table
+
         sink('table.html')
         do.call(
             stargazer,
             c(
-                reg.star(),
+                reg_star_$id(),
                 type = 'html'
             )
         )        
@@ -368,7 +366,7 @@ output[['$id-download']] <- downloadHandler(
         do.call(
             stargazer,
             c(
-                reg.star(),
+                reg_star_$id(),
                 type = 'latex'
             )
         )        
@@ -383,16 +381,80 @@ output[['$id-download']] <- downloadHandler(
 )
 "
 
-    o <- list(
-        server = rprintv(
-            tmp.reg_server,
-            id = id
-        ),
-        ui = rprintv(
-            tmp.ui,
-            id = id
-        )        
-    )
+tmp.global <- "
+## DEFINE GLOBAL VARIABLES
+library(plm)
 
-    return(o)
+reg_results_$id <- list()
+reg_depvars_$id <- c()
+reg_model_$id <- c('Model')
+reg_effects_$id <- c('Main Effects')
+reg_absorb_$id <- c('Fixed Effects')
+reg_standardize_$id <- c('Standardized?')
+reg_setype_$id <- c('SE Type')
+"
+
+## id = 'test'
+## data = 'data'
+## idVar = 'idVar'
+## dateVar = 'dateVar'
+
+
+##' instantShiny module: PLM Regression
+##'
+##' Function that scaffolds the instantShiny module
+##' 
+##' @param id ID char string to be appended to input and output shiny objects 
+##' @param data name of data file
+##' @param idVar name of variable that defines cross-sectional dimension of the data
+##' @param dateVar name of variable that defines time-dimension of the data
+##' @param app.dir path of the directory in which to insert the module
+##' @return NULL 
+##' @author Janko Cizel
+##'
+##' @export
+scaffold_module_plmRegression <- function(
+    id = '<id>',
+    data = '<data>',
+    idVar = '<idVar>',
+    dateVar = '<dateVar>',
+    app.dir = '.'
+){
+    newwd <- sprintf('%s/module',app.dir)
+    
+    if (!file.exists(newwd))
+        dir.create(newwd)
+    
+    rprintv(
+        tmp.server,
+        id = id,
+        data = data,
+        idVar = idVar,
+        dateVar = dateVar
+    ) %>>%
+    save2file(root = newwd,
+              dir.name = 'plmRegression',
+              file.name = 'server.R')
+    
+    
+    rprintv(
+        tmp.ui,
+        id = id
+    ) %>>%        
+    save2file(root = newwd,
+              dir.name = 'plmRegression',
+              file.name = 'ui.R')
+    
+    rprintv(
+        tmp.global,
+        id = 'test'
+    ) %>>%
+    save2file(root = newwd,
+              dir.name = 'plmRegression',
+              file.name = 'global.R')
+
+    return(NULL)
 }
+
+
+

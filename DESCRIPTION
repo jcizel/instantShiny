@@ -8,6 +8,7 @@ Depends: R (>= 3.1.1)
 Imports: pipeR,
 	 rlist,
 	 rprintf,
-	 shiny
+	 shiny,
+	 shinydashboard
 License: MIT + file LICENSE
 LazyData: true

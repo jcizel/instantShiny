@@ -1,8 +1,13 @@
+available.modules <- c(
+    'plmRegression'
+)
+
 scaffold_global <- function(
     libraries = NULL,
     sources = NULL,
-    load = NULL
-){
+    load = NULL,
+    modules = NULL
+){   
     if (is.null(libraries)){
         libraries %>>%
         list.map(
@@ -26,6 +31,37 @@ scaffold_global <- function(
         sources = '\n'
     }
 
+
+    if (!is.null(modules)){
+        ## Scaffold files
+        modules  %>>%
+        list.map(
+            sprintf("instantShiny::scaffold_module_%s()\n",
+                    modules) 
+        ) %>>% unlist %>>%
+        paste(collapse = "\n") ->
+            modules.init
+        
+        ## Source the files
+        modules  %>>%
+        list.map(
+            sprintf("source('./module/%s/global.R', local = TRUE)",.)
+        ) %>>% unlist %>>%
+        paste(collapse = "\n") ->
+            modules.source
+        
+        c(
+            modules.init,
+            modules.source
+        ) %>>%
+        paste(collapse = "\n\n") ->
+            modules
+        
+    } else {
+        modules = '\n'
+    }
+    
+
     if (!is.null(load)){
         load  %>>%
         list.map(
@@ -46,6 +82,7 @@ scaffold_global <- function(
 library(devtools)
 library(shiny)
 library(shinydashboard)
+library(instantShiny)
 library(data.table)",
          libraries,
           "
@@ -54,6 +91,12 @@ library(data.table)",
 ## -------------------------------------------------------------------------- ##
 ",
           sources,
+          "
+## -------------------------------------------------------------------------- ##
+## Modules                                                                    ##
+## -------------------------------------------------------------------------- ##
+",
+          modules,          
           "
 ## -------------------------------------------------------------------------- ##
 ## Load .RData files                                                          ##
@@ -66,11 +109,23 @@ library(data.table)",
 
 
 scaffold_ui <- function(
-    title = NULL
+    title = NULL,
+    modules = NULL
 ){
+
+    if (!is.null(modules)){
+        modules  %>>%
+        list.map(
+            sprintf("source('./module/%s/ui.R', local = TRUE)",.)
+        ) %>>% unlist %>>%
+        paste(collapse = "\n") ->
+            modules
+    } else {
+        modules = '\n'
+    }  
     
     tmp <-
-        "
+        c("
 ## -------------------------------------------------------------------------- ##
 ## UI.R                                                                       ##
 ## -------------------------------------------------------------------------- ##        
@@ -94,7 +149,9 @@ sidebar <- dashboardSidebar(
 ## -------------------------------------------------------------------------- ##
 
 ## source(<Add Module Path>, local = TRUE)
-
+",
+          modules,
+          "
 body <-
     dashboardBody(
         tabItems(
@@ -112,7 +169,9 @@ dashboardPage(
     body,
     skin = 'black'
 )
-"
+") %>>% paste(collapse = "\n")
+
+    
     o <- rprintv(
         tmp,
         title = title
@@ -123,21 +182,30 @@ dashboardPage(
 
 
 scaffold_server <- function(
-){    
-    tmp <- "
-## ## GLOBAL VARS FOR REGRESSION TABLES
-## reg.results <- list()
-## reg.depvars <- c()
-## reg.model <- c('Model')
-## reg.effects <- c('Main Effects')
-## reg.absorb <- c('Fixed Effects')
-## reg.standardize <- c('Standardized?')
-## reg.setype <- c('SE Type')
+    modules = NULL
+){
 
+    if (!is.null(modules)){
+        modules  %>>%
+        list.map(
+            sprintf("source('./module/%s/global.R', local = TRUE)",.)
+        ) %>>% unlist %>>%
+        paste(collapse = "\n") ->
+            modules
+    } else {
+        modules = '\n'
+    }
+    
+    tmp <- c("
 shinyServer(function(input,output,session){
+
+",
+    modules,
+    "
     ## source(<module>, local = TRUE)    
 })
-"
+") %>>% paste(collapse = "\n")
+    
     return(tmp)
 }
 
@@ -155,6 +223,11 @@ shinyServer(function(input,output,session){
 ##' @param delete.existing If the folder with same name as `app.name` already
 ##' exists, should it be overwritten? Default is FALSE.
 ##' @param run Run the resulting app? Default is TRUE.
+##' @param tilte 
+##' @param libraries 
+##' @param sources 
+##' @param load 
+##' @param modules 
 ##' @return NULL
 ##' @author Janko Cizel
 ##'
@@ -171,32 +244,61 @@ scaffold_dashboard <- function(
     root = NULL,
     app.name = NULL,
     delete.existing = FALSE,
-    run = TRUE
+    run = TRUE,
+    title = 'Test App',
+    libraries = NULL,
+    sources = NULL,
+    load = NULL,
+    modules = NULL    
 ){
+    ## Create directory with the app
     oldwd <- getwd()
-
     newwd <- sprintf('%s/%s',root,app.name)
 
-    if (file.exists(newwd) & delete.existing == TRUE)
-        unlink(newwd, recursive = TRUE, force = TRUE)
-    else
-        stop(newwd, "already exists. Set `delete.existing = TRUE` if you want to overwrite the folder.") 
+    if (file.exists(newwd)){
+        if (delete.existing == TRUE)
+            unlink(newwd, recursive = TRUE, force = TRUE)
+        else
+            stop(newwd, " already exists. Set `delete.existing = TRUE` if you want to overwrite the folder.") 
+    }
 
-    scaffold_global() %>>%
+    ## Add modules
+    if (!is.null(modules)){
+        if (any(!modules %in% available.modules))
+            stop('One of the modules is not available')        
+    }       
+    
+    if (is.null(root) | is.null(app.name))
+        stop("`root` and `app.name` are required arguments.")
+    
+
+    scaffold_global(
+        libraries = libraries,
+        sources = sources,
+        load = load,
+        modules = modules
+    ) %>>%
     save2file(root = root,
-              dir.name = dir.name,
+              dir.name = app.name,
               file.name = 'global.R')
 
-    scaffold_ui(title = 'test') %>>%
+    scaffold_ui(
+        title = title,
+        modules = modules        
+    ) %>>%
     save2file(root = root,
-              dir.name = dir.name,
+              dir.name = app.name,
               file.name = 'ui.R')
 
-    scaffold_server() %>>%
+    scaffold_server(
+        modules = modules
+    ) %>>%
     save2file(root = root,
-              dir.name = dir.name,
+              dir.name = app.name,
               file.name = 'server.R')
 
+    setwd(oldwd)
+    
     if (run == TRUE){
         shiny::runApp(sprintf('%s/.',newwd))
     }

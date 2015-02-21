@@ -14,5 +14,6 @@ save2file <- function(
     cat(str)
     sink()
 
-    return(NULL)
+    setwd(oldwd)
+    return(str)
 }
