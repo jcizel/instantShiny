@@ -1,0 +1,13 @@
+Package: instantShiny
+Title: Scaffold Shiny Dashboards
+Version: 0.1
+Date: 2015-02-21
+Authors@R: person("Janko", "Cizel", , "jcizel@gmail.com", role = c("aut", "cre"))
+Description: This package aids an easy construction of dashboards in Shiny
+Depends: R (>= 3.1.1)
+Imports: pipeR,
+	 rlist,
+	 rprintf,
+	 shiny
+License: MIT + file LICENSE
+LazyData: true
